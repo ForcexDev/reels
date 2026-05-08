@@ -31,10 +31,10 @@
    https://www.youtube.com/shorts/dQw4w9WgXcQ  →  "dQw4w9WgXcQ"
 ════════════════════════════════════════════════════════════════ */
 const VIDEO_IDS = [
-  'LDU_Txk06tM',   // Short #1 — reemplaza con tu ID
-  'jNQXAC9IVRw',   // Short #2 — reemplaza con tu ID
-  'M7lc1UVf-VE',   // Short #3 — reemplaza con tu ID
-  'dQw4w9WgXcQ',   // Short #4 — reemplaza con tu ID
+  'xVCCSfJJaMM',   // Short #1 ← TU VIDEO (siempre de primero)
+  'YM24OS2zaDE',   // Short #2 — reemplaza con tu ID
+  'nlMEpZHX1kE',   // Short #3 — reemplaza con tu ID
+  'M7lc1UVf-VE',   // Short #4 — reemplaza con tu ID
 ];
 /* ════════════════════════════════════════════════════════════════
    ▲▲▲  FIN DE LA SECCIÓN DE IDs  ▲▲▲
@@ -65,8 +65,19 @@ const state = {
   isPaused:     false, // Si el usuario ha pausado manualmente el video actual
   ytReady:      false, // True cuando la API de YouTube ha cargado
   observer:     null,  // IntersectionObserver activo
+  globalMuted:  true,  // Arranca silenciado (obligatorio para autoplay); el usuario lo desactiva
 };
 
+/* SVGs de mute/unmute reutilizables */
+const ICON_MUTED = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+  <line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
+</svg>`;
+const ICON_SOUND = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+  <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+  <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+</svg>`;
 
 /* ─── Referencias al DOM ─── */
 const feed         = document.getElementById('feed');
@@ -77,6 +88,7 @@ const btnDown      = document.getElementById('btnDown');
 const currentIdxEl = document.getElementById('currentIdx');
 const totalCountEl = document.getElementById('totalCount');
 const toastEl      = document.getElementById('toast');
+const muteBtn      = document.getElementById('muteBtn');
 
 
 /* ════════════════════════════════════════════════════════════════
@@ -93,8 +105,30 @@ function showToast(msg, type = '', duration = 2600) {
 
 
 /* ════════════════════════════════════════════════════════════════
-   COUNTER — Actualiza "X / N" en la navegación lateral
+   MUTE GLOBAL — Silenciar / Activar audio en todos los players
 ════════════════════════════════════════════════════════════════ */
+function applyMuteState() {
+  state.players.forEach(p => {
+    if (!p || typeof p.mute !== 'function') return;
+    state.globalMuted ? p.mute() : p.unMute();
+  });
+  /* Actualizar ícono del botón */
+  if (muteBtn) muteBtn.innerHTML = state.globalMuted ? ICON_MUTED : ICON_SOUND;
+}
+
+function toggleMute() {
+  state.globalMuted = !state.globalMuted;
+  applyMuteState();
+  showToast(
+    state.globalMuted ? '🔇 Silenciado' : '🔊 Audio activado',
+    'success',
+    1800
+  );
+}
+
+if (muteBtn) muteBtn.addEventListener('click', toggleMute);
+
+
 function updateCounter() {
   currentIdxEl.textContent = state.currentIndex + 1;
   totalCountEl.textContent = VIDEO_IDS.length;
@@ -269,7 +303,7 @@ window.onYouTubeIframeAPIReady = function () {
       },
       events: {
         onReady: (event) => {
-          /* Silenciar el player al estar listo (obligatorio para autoplay) */
+          /* Silenciar al inicio (obligatorio para autoplay en navegadores) */
           event.target.mute();
 
           /* Solo reproducir el primer video automáticamente */
@@ -277,10 +311,26 @@ window.onYouTubeIframeAPIReady = function () {
             event.target.playVideo();
           }
 
-          /* Arrancar el observer una vez que TODOS los players estén listos */
+          /* Registrar el player en el array de estado */
           state.players[index] = event.target;
-          const allReady = state.players.filter(Boolean).length === VIDEO_IDS.length;
-          if (allReady) initObserver();
+
+          /* Comprobar si todos los players están listos */
+          const readyCount = state.players.filter(Boolean).length;
+          if (readyCount === VIDEO_IDS.length) {
+            /* Aplicar estado de mute actual a todos los players */
+            applyMuteState();
+            /* Inicializar ícono del botón de mute */
+            if (muteBtn) muteBtn.innerHTML = state.globalMuted ? ICON_MUTED : ICON_SOUND;
+            /* Pulsar el botón de mute para que el usuario lo note */
+            if (muteBtn) {
+              setTimeout(() => {
+                muteBtn.classList.add('pulse');
+                muteBtn.addEventListener('animationend', () => muteBtn.classList.remove('pulse'), { once: true });
+              }, 800);
+            }
+            /* Arrancar el IntersectionObserver */
+            initObserver();
+          }
         },
         onError: (event) => {
           /* Errores comunes de YouTube:
@@ -333,6 +383,8 @@ function navigateTo(rawIndex) {
     const player = state.players[index];
     if (player && typeof player.playVideo === 'function') {
       player.playVideo();
+      /* Respetar el estado de mute actual */
+      state.globalMuted ? player.mute() : player.unMute();
     }
   }, 350);
 }
