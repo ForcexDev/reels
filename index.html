@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Fakebook</title>
+  <title>Fakebook — Shorts</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
@@ -15,69 +15,72 @@
   <header class="top-bar">
     <div class="logo">
       <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" stroke="#0866FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"
+              stroke="#0866FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <span class="logo-text">Fakebook</span>
     </div>
+
     <div class="header-right">
-      <button class="icon-btn" id="muteAllBtn" title="Silenciar todo">
-        <svg id="muteIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-          <line x1="23" y1="9" x2="17" y2="15"/>
-          <line x1="17" y1="9" x2="23" y2="15"/>
+      <span class="shorts-badge">
+        <!-- Ícono rayo "Shorts" -->
+        <svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11">
+          <path d="M13 2L4.09 12.97H11L10 22l8.91-10.97H13L13 2z"/>
         </svg>
-      </button>
+        Shorts
+      </span>
     </div>
   </header>
 
   <!-- ═══════════════ FEED PRINCIPAL ═══════════════ -->
+  <!--
+    Los slides de YouTube se inyectan dinámicamente aquí
+    por script.js a partir del array VIDEO_IDS.
+  -->
   <main id="feed" class="feed">
 
-    <!-- Estado vacío -->
-    <div id="emptyState" class="empty-state">
-      <div class="empty-icon">
-        <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="40" cy="40" r="38" stroke="#0866FF" stroke-width="1.5" stroke-dasharray="4 4"/>
-          <path d="M30 40 L40 30 L50 40" stroke="#0866FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M40 30 L40 54" stroke="#0866FF" stroke-width="2" stroke-linecap="round"/>
-          <rect x="28" y="56" width="24" height="3" rx="1.5" fill="#0866FF" opacity="0.4"/>
-        </svg>
-      </div>
-      <h2 class="empty-title">No hay videos aún</h2>
-      <p class="empty-sub">Sube tu primer video para empezar<br/>el scroll infinito</p>
-      <button class="empty-cta" id="emptyCta">
-        <span>+</span> Subir video
-      </button>
+    <!-- Pantalla de carga mientras la YT API inicializa -->
+    <div id="loadingState" class="loading-state">
+      <div class="loader-ring"></div>
+      <p class="loading-text">Iniciando Shorts…</p>
     </div>
 
   </main>
 
-  <!-- ═══════════════ CONTROLES LATERALES ═══════════════ -->
-  <nav class="side-nav" id="sideNav" style="display:none;">
-    <button class="nav-btn" id="btnUp" title="Video anterior">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <!-- ═══════════════ NAV LATERAL ═══════════════ -->
+  <nav class="side-nav" id="sideNav">
+    <button class="nav-btn" id="btnUp" title="Anterior" aria-label="Short anterior">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="18 15 12 9 6 15"/>
       </svg>
     </button>
-    <div class="nav-counter">
-      <span id="currentIdx">1</span>/<span id="totalCount">0</span>
+
+    <div class="nav-counter" aria-live="polite" aria-atomic="true">
+      <span id="currentIdx">1</span>
+      <span class="nav-sep">/</span>
+      <span id="totalCount">–</span>
     </div>
-    <button class="nav-btn" id="btnDown" title="Video siguiente">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+
+    <button class="nav-btn" id="btnDown" title="Siguiente" aria-label="Short siguiente">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="6 9 12 15 18 9"/>
       </svg>
     </button>
   </nav>
 
-  <!-- ═══════════════ BOTÓN SUBIR ═══════════════ -->
-  <button class="upload-fab" id="uploadFab" title="Subir videos">
-    <span class="fab-plus">+</span>
-    <input type="file" id="fileInput" accept="video/*" multiple hidden />
-  </button>
-
   <!-- ═══════════════ TOAST ═══════════════ -->
   <div id="toast" class="toast" role="alert" aria-live="polite"></div>
 
+  <!-- ═══════════════ SCRIPTS ═══════════════ -->
+  <!--
+    1. YouTube IFrame API (asíncrona).
+       Al cargarse, llama automáticamente a window.onYouTubeIframeAPIReady()
+       definida en script.js.
+    2. Nuestro script DESPUÉS de definir la callback global.
+  -->
   <script src="script.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
 </body>
 </html>
